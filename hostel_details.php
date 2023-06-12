@@ -1,10 +1,52 @@
 <?php
+require('controllers/product_controller.php');
 session_start();
-require_once('settings/const.php');
-require('settings/connection.php');
-if (isset($_GET['hostel_id'])) {
-    $hostel_id = $_GET['hostel_id'];
-}
+
+// Processing form data when form is submitted
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $hostel_id = $_POST['hostel_id'];
+    $user_id = $_POST['user_id'];
+    $qty = $_POST['qty'] ?: 1;
+  
+    // Get an array of selected room numbers with their prices
+    $selected_rooms = isset($_POST['room_num']) ? $_POST['room_num'] : [];
+  
+    // Insert each selected room number as a separate record or update quantity if it exists
+    foreach ($selected_rooms as $selected_room) {
+      // Split the value into room number and price
+      $room_parts = explode('|', $selected_room);
+      $room_num = $room_parts[0];
+      $room_price = $room_parts[1];
+  
+      $existed_cart = select_from_cart_room_controller($room_num, $user_id, $hostel_id);
+  
+      if ($existed_cart) {
+        $new_quantity = $existed_cart['qty'] + $qty;
+        $new_room = $existed_cart['room_num'];
+  
+        if ($new_room == $room_num) {
+          $update_quant = update_cart_controller($hostel_id, $user_id, $new_quantity, $room_num);
+        } else {
+          $update = add_to_cart_controller($hostel_id, $user_id, $qty, $room_num, $room_price);
+        }
+      } else {
+        $update = add_to_cart_controller($hostel_id, $user_id, $qty, $room_num, $room_price);
+        if (!$update) {
+          echo "<script>alert('Error inserting record for room number: $room_num');</script>";
+        }
+      }
+    }
+  
+    header('Location: cart.php');
+  }
+  
+
+
+$hostel = select_one_hostel_controller($_GET['id']);
+$customer_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : "";
+// this is for cart counting
+ $cart_count = cart_count_controller($customer_id);
+ 
 
 ?>
 <!DOCTYPE html>
@@ -47,45 +89,86 @@ if (isset($_GET['hostel_id'])) {
 </head>
 
 <body class="inner-pages sin-1 homepage-4 hd-white">
+<?php if (empty($customer_id)) { ?>
     <div id="wrapper">
         <header id="header-container">
             <div id="header">
                 <div class="container container-header">
                     <div class="left-side">
                         <div id="logo">
-                            <a href="home.php"><img src="images/rest.png" alt=""></a>
+                            <a href="index.php"><img src="images/rest.png" alt=""></a>
                         </div>
                         <!-- Mobile Navigation -->
                         <div class="mmenu-trigger">
                             <button class="hamburger hamburger--collapse" type="button">
                                 <span class="hamburger-box">
-                                    <span class="hamburger-inner"></span>
+							<span class="hamburger-inner"></span>
                                 </span>
                             </button>
                         </div>
                         <!-- Main Navigation -->
                         <nav id="navigation" class="style-1">
                             <ul id="responsive">
-                                <li><a href="home.php">Home</a></li>
-                                <li><a href="my_rooms.php">My Paid Rooms</a></li>
-                                <li><a href="user_faq.php">FAQ</a></li>
-                                <li><a href="user_contact.php">Contact</a></li>
+                                <li><a href="index.php">Home</a></li>
+                                    <li><a href="login.php">My Favorites</a></li>
+                                    <li><a href="faq.php">FAQ</a></li> 
+                                    <li><a href="contact_us.php">Contact</a></li>
+
                             </ul>
-                        </nav>
                     </div>
                     <div class="header-user-menu user-menu add">
-                        <a href="making_payment.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;padding-left:25px;'></i>
-                            <span class='badge badge-warning' id='lblCartCount'> 1 </span></a>
+                    <a href="login.php" style="color:#FF385C; text-decoration:none;"><strong>Login &nbsp; &nbsp;</strong></a>
+                    <a href="index_cart.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;'></i></a>
+                    </div>
+            </div>
+        </header>
+    </div>
+    <?php } else{ ?>
+        <div id="wrapper">
+        <header id="header-container">
+            <div id="header">
+                <div class="container container-header">
+                    <div class="left-side">
+                        <div id="logo">
+                            <a href="index.php"><img src="images/rest.png" alt=""></a>
+                        </div>
+                        <!-- Mobile Navigation -->
+                        <div class="mmenu-trigger">
+                            <button class="hamburger hamburger--collapse" type="button">
+                                <span class="hamburger-box">
+							<span class="hamburger-inner"></span>
+                                </span>
+                            </button>
+                        </div>
+                        <!-- Main Navigation -->
+                        <nav id="navigation" class="style-1">
+                            <ul id="responsive">
+                                <li><a href="index.php">Home</a></li>
+                                    <li><a href="login.php">My Favorites</a></li>
+                                    <li><a href="faq.php">FAQ</a></li> 
+                                    <li><a href="contact_us.php">Contact</a></li>
+
+                            </ul>
+                    </div>
+                    <div class="header-user-menu user-menu add">
+                    <a href="cart.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;padding-left:25px;'></i>
+                    <span class='badge badge-warning' id='lblCartCount'> <?php if(empty($cart_count['counting'])){
+                        echo '';
+                    } else{
+                        echo $cart_count['counting'];
+                    }?> </span></a>
                         <div class="header-user-name">
-                            <span><img src="images/icons/user.png" alt=""></span>Hi, <?php echo $_SESSION["username"]; ?>!
+                            <span><img src="images/icons/user.png" alt=""></span>Hi, <?php echo $_SESSION["username"];?>!
                         </div>
                         <ul>
                             <li><a href="user_profile.php"> Edit profile</a></li>
                             <li><a href="log_out.php">Log Out</a></li>
                         </ul>
                     </div>
-                </div>
+            </div>
         </header>
+    </div>
+    <?php } ?>
         <div class="clearfix"></div>
         <!-- START SECTION HOSTELS LISTING -->
         <section class="single-proper blog details">
@@ -99,16 +182,8 @@ if (isset($_GET['hostel_id'])) {
                                         <div class="detail-wrapper-body">
                                             <div class="listing-title-bar">
                                                 <h3><?php
-                                                    require_once('settings/const.php');
 
-                                                    $mysqli = new mysqli(SERVER, USERNAME, PASSWORD, DATABASE);
-                                                    $sql = "SELECT hostel_name FROM hostels where hostel_id = '$hostel_id';";
-                                                    $result = mysqli_query($mysqli, $sql);
-                                                    // Associative while loop array
-                                                    while ($row = mysqli_fetch_assoc($result)) {
-                                                        echo "<h3>{$row['hostel_name']}</h3>";
-                                                    }
-
+                                                    echo "{$hostel['hostel_name']}";
                                                     ?>
                                                 </h3>
                                             </div>
@@ -171,26 +246,15 @@ if (isset($_GET['hostel_id'])) {
                                     <p class="mb-3">Colombiana Hostel is a fine hostel which most of their rooms are available for
                                         males. It is a quiet place and it is a Family House type of hostel.<br>
                                         <br><span style="color:green">Owner's Name:</span> <?php
-                                                                                            require_once('settings/const.php');
 
-                                                                                            $mysqli = new mysqli(SERVER, USERNAME, PASSWORD, DATABASE);
-                                                                                            $sql = "SELECT hostel_owner FROM hostels where hostel_id = '$hostel_id';";
-                                                                                            $result = mysqli_query($mysqli, $sql);
-                                                                                            // Associative while loop array
-                                                                                            while ($row = mysqli_fetch_assoc($result)) {
-                                                                                                echo "<span style='$hostel_id''color:red'>{$row['hostel_owner']}</span>";
-                                                                                            }
+
+                                                                                            echo "<span style='color:red'>{$hostel['hostel_owner']}</span>";
 
                                                                                             ?>
                                         <br><span style="color:green">Phone number:</span> <?php
-                                                                                            require_once('settings/const.php');
 
-                                                                                            $sql = "SELECT owner_phone FROM hostels where hostel_id ='$hostel_id';";
-                                                                                            $result = mysqli_query($mysqli, $sql);
-                                                                                            // Associative while loop array
-                                                                                            while ($row = mysqli_fetch_assoc($result)) {
-                                                                                                echo "<span style='color:red'>{$row['owner_phone']}</span>";
-                                                                                            }
+                                                                                            echo "<span style='color:red'>{$hostel['owner_phone']}</span>";
+
                                                                                             ?>
                                     </p>
                                 </div>
@@ -237,30 +301,7 @@ if (isset($_GET['hostel_id'])) {
                             </ul>
                         </div>
                         <!-- Choose Your room-->
-                        <div class="single homes-content details mb-30">
-                            <h5 class="mb-4">Choose The Booking Date</h5>
-                            <div class="row">
-                                <div class="col-3">
-                                    <input type="checkbox" class="form-control" id="txtDate">4 in a room
-                                </div>
-                                <div class="col-3">
-                                    <input type="checkbox" class="form-control" id="txtDate">3 in a room
-
-                                </div>
-                                <div class="col-3">
-                                    <input type="checkbox" class="form-control" id="txtDate"> 2 in a room
-                                </div>
-                                <div class="col-">
-                                    <input type="checkbox" class="form-control" id="txtDate"> 1 in a room
-                                </div>
-                            </div>
-                            <div class='row'>
-                                <div class='col' style="margin-top:50px; margin-left:37%;">
-                                    <button type="submit" style="background-color: darkblue; border:none; border-radius:6px 6px 6px 6px; color:white;padding: 10px 15px;">Book Now</button>
-                                </div>
-                            </div>
-
-                        </div>
+                 
                     </div>
                     <aside class="col-lg-4 col-md-12 car" style="margin-top:100px;">
                         <div class="single widget">
@@ -273,84 +314,24 @@ if (isset($_GET['hostel_id'])) {
                                         </div>
                                         <div class="widget-boxed-body">
                                             <div class="slick-lancers">
+                                            <?php
+                         $products = select_all_hostels_controller();
+                         foreach ($products as $hostel) { ?>
                                                 <div class="agents-grid mr-0">
                                                     <div class="listing-item compact">
-                                                        <a href="properties-details.html" class="listing-img-container">
+                                                        <a href="hostel_details.php?id=<?php echo $hostel['hostel_id']?>" class="listing-img-container">
                                                             <div class="listing-img-content">
-                                                                <span class="listing-compact-title">House Luxury <i>New York</i></span>
+                                                                <span class="listing-compact-title"><?php echo $hostel['hostel_name']?></span>
                                                                 <ul class="listing-hidden-content">
-                                                                    <li>Price Range <span>GH₵ 5000-8000</span></li>
+                                                                    <li>Price Range <span>GH₵ <?php echo $hostel['price_range']?></span></li>
                                                                 </ul>
                                                             </div>
-                                                            <img src="images/feature-properties/fp-1.jpg" alt="">
+                                                            <img src="<?php echo $hostel['image']?>" alt="">
                                                         </a>
                                                     </div>
                                                 </div>
-                                                <div class="agents-grid mr-0">
-                                                    <div class="listing-item compact">
-                                                        <a href="properties-details.html" class="listing-img-container">
-                                                            <div class="listing-img-content">
-                                                                <span class="listing-compact-title">House Luxury <i>Los Angles</i></span>
-                                                                <ul class="listing-hidden-content">
-                                                                    <li>Price Range <span>GH₵ 5000-8000</span></li>
-                                                                </ul>
-                                                            </div>
-                                                            <img src="images/feature-properties/fp-2.jpg" alt="">
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                                <div class="agents-grid mr-0">
-                                                    <div class="listing-item compact">
-                                                        <a href="properties-details.html" class="listing-img-container">
-                                                            <div class="listing-img-content">
-                                                                <span class="listing-compact-title">House Luxury <i>San Francisco</i></span>
-                                                                <ul class="listing-hidden-content">
-                                                                    <li>Price Range <span>GH₵ 5000-8000</span></li>
-                                                                </ul>
-                                                            </div>
-                                                            <img src="images/feature-properties/fp-3.jpg" alt="">
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                                <div class="agents-grid mr-0">
-                                                    <div class="listing-item compact">
-                                                        <a href="properties-details.html" class="listing-img-container">
-                                                            <div class="listing-img-content">
-                                                                <span class="listing-compact-title">House Luxury <i>Miami FL</i></span>
-                                                                <ul class="listing-hidden-content">
-                                                                    <li>Price Range <span>GH₵ 5000-8000</span></li>
-                                                                </ul>
-                                                            </div>
-                                                            <img src="images/feature-properties/fp-4.jpg" alt="">
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                                <div class="agents-grid mr-0">
-                                                    <div class="listing-item compact">
-                                                        <a href="properties-details.html" class="listing-img-container">
-                                                            <div class="listing-img-content">
-                                                                <span class="listing-compact-title">House Luxury <i>Chicago IL</i></span>
-                                                                <ul class="listing-hidden-content">
-                                                                    <li>Price Range <span>GH₵ 5000-8000</span></li>
-                                                                </ul>
-                                                            </div>
-                                                            <img src="images/feature-properties/fp-5.jpg" alt="">
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                                <div class="agents-grid mr-0">
-                                                    <div class="listing-item compact">
-                                                        <a href="properties-details.html" class="listing-img-container">
-                                                            <div class="listing-img-content">
-                                                                <span class="listing-compact-title">House Luxury <i>Toronto CA</i></span>
-                                                                <ul class="listing-hidden-content">
-                                                                    <li>Price Range <span>GH₵ 5000-8000</span></li>
-                                                                </ul>
-                                                            </div>
-                                                            <img src="images/feature-properties/fp-6.jpg" alt="">
-                                                        </a>
-                                                    </div>
-                                                </div>
+                                          <?php }  ?>
+                                              
                                             </div>
                                         </div>
                                     </div>
@@ -390,6 +371,51 @@ if (isset($_GET['hostel_id'])) {
                             </div>
                         </div>
                     </aside>
+                    <div class="single homes-content details mb-30 col-md-8">
+                        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST" id="bookingForm">
+                            <h5 class="mb-4">Choose The Booking Date</h5>
+                            <div class="row">
+                                <input type='hidden' value='<?php echo $_GET['id'] ?>' name='hostel_id'>
+                                <input type='hidden' value='<?php echo $_SESSION['user_id'] ?>' name='user_id'>
+                                <div class="col-3">
+                                    <label for="txtDate" class="form-check-label">
+                                        <input type="checkbox" class="form-check-input" id="room1" name='room_num[]' value='4 in a room|5000' >
+                                        4 in a room - GH₵ 5000
+                                    </label>
+                                </div>
+
+                                <div class="col-3">
+                                    <label for="txtDate" class="form-check-label">
+                                        <input type="checkbox" class="form-check-input" id="room2" name='room_num[]' value='3 in a room|5500'>
+                                        3 in a room - GH₵ 5500
+                                    </label>
+                                </div>
+
+                                <div class="col-3">
+                                    <label for="txtDate" class="form-check-label">
+                                        <input type="checkbox" class="form-check-input" id="room3" name='room_num[]' value='2 in a room|6000'>
+                                        2 in a room - GH₵ 6000
+                                    </label>
+                                </div>
+                                <div class="col-3">
+                                    <label for="txtDate" class="form-check-label">
+                                        <input type="checkbox" class="form-check-input" id="room4" name='room_num[]'  value='1 in a room|7000'>
+                                        1 in a room - GH₵ 7000
+                                    </label>
+                                </div>
+                            </div>
+                            <div class='row'>
+                            <?php if(empty($customer_id)){?>
+                                    <div class='col' style="margin-top:50px; margin-left:37%;">
+                                    <button onclick="window.location.href = 'login.php'" style="background-color: darkblue; border:none; border-radius:6px 6px 6px 6px; color:white;padding: 10px 15px;">Book Now</button>
+                                </div><?php } else{?>
+                                <div class='col' style="margin-top:50px; margin-left:37%;">
+                                    <button type="submit" style="background-color: darkblue; border:none; border-radius:6px 6px 6px 6px; color:white;padding: 10px 15px;">Book Now</button>
+                                </div>
+                                <?php } ?>
+                            </div>
+                        </form>
+                        </div>
                 </div>
             </div>
         </section>
@@ -403,55 +429,19 @@ if (isset($_GET['hostel_id'])) {
             </div>
         </footer>
 
-        <!--register form -->
-        <div class="login-and-register-form modal">
-            <div class="main-overlay"></div>
-            <div class="main-register-holder">
-                <div class="main-register fl-wrap">
-                    <div class="close-reg"><i class="fa fa-times"></i></div>
-                    <h3>Welcome to <span>Find<strong>Houses</strong></span></h3>
-                    <div id="tabs-container">
-                        <ul class="tabs-menu">
-                            <li class="current"><a href="#tab-1">Login</a></li>
-                            <li><a href="#tab-2">Register</a></li>
-                        </ul>
-                        <div class="tab">
-                            <div id="tab-1" class="tab-contents">
-                                <div class="custom-form">
-                                    <form method="post" name="registerform">
-                                        <label>Username </label>
-                                        <input name="email" type="text" onClick="this.select()" value="">
-                                        <label>Password</label>
-                                        <input name="password" type="password" onClick="this.select()" value="">
-                                        <button type="submit" class="log-submit-btn"><span>Log In</span></button>
-                                        <div class="clearfix"></div>
-                                    </form>
-                                </div>
-                            </div>
-                            <div class="tab">
-                                <div id="tab-2" class="tab-contents">
-                                    <div class="custom-form">
-                                        <form method="post" name="registerform" class="main-register-form" id="main-register-form2">
-                                            <label>Username</label>
-                                            <input name="name" type="text">
-                                            <label>Full Name</label>
-                                            <input name="name2" type="text">
-                                            <label>Email Address</label>
-                                            <input name="email" type="text">
-                                            <label>Password</label>
-                                            <input name="password" type="password">
-                                            <label>Confirm Password</label>
-                                            <input name="confirm_password" type="password">
-                                            <button type="submit" class="log-submit-btn"><span>Register</span></button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <script>
+    document.getElementById('bookingForm').addEventListener('submit', function(event) {
+        var checkboxes = document.querySelectorAll('input[name="room_num[]"]');
+        var checked = Array.prototype.slice.call(checkboxes).some(function(checkbox) {
+            return checkbox.checked;
+        });
+        if (!checked) {
+            event.preventDefault(); // Prevent form submission
+            alert('Please select at least one room.');
+        }
+    });
+</script>
+
         <!-- ARCHIVES JS -->
         <script src="js/jquery-3.5.1.min.js"></script>
         <script src="js/jquery-ui.js"></script>
@@ -515,24 +505,25 @@ if (isset($_GET['hostel_id'])) {
             });
         </script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-        <script>
-            $(function() {
-                var dtToday = new Date();
+<script>
+    document.querySelector('form').addEventListener('submit', function(event) {
+    var checkboxes = document.querySelectorAll('input[name="room[]"]');
+    var isChecked = false;
+    
+    for (var i = 0; i < checkboxes.length; i++) {
+        if (checkboxes[i].checked) {
+            isChecked = true;
+            break;
+        }
+    }
+    
+    if (!isChecked) {
+        event.preventDefault();
+        document.getElementById('roomError').textContent = 'Please select at least one option.';
+    }
+});
 
-                var month = dtToday.getMonth() + 1;
-                var day = dtToday.getDate();
-                var year = dtToday.getFullYear();
-                if (month < 10)
-                    month = '0' + month.toString();
-                if (day < 10)
-                    day = '0' + day.toString();
-
-                var minDate = year + '-' + month + '-' + day;
-
-                $('#txtDate').attr('min', minDate);
-            });
-        </script>
-
+</script>
 
     </div>
 </body>

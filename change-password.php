@@ -1,68 +1,48 @@
 <?php
-// Initialize the session
+
 session_start();
 
  
 // Including the config file
 require_once "settings/connection.php";
- 
+require "controllers/customer_controller.php";
 // Variable are initialize with empty values
-$new_password = $confirm_password = "";
 $new_password_err = $confirm_password_err = "";
  
 // Data being processed when form is submitted
 if($_SERVER["REQUEST_METHOD"] == "POST"){
  
     // Validating the new password
-    if(empty(trim($_POST["new_password"]))){
-        $new_password_err = "Please enter the new password.";     
-    } elseif(strlen(trim($_POST["new_password"])) < 6){
-        $new_password_err = "Password must have at least 6 characters.";
-    } else{
-        $new_password = trim($_POST["new_password"]);
-    }
-    
-    // Validating the confirm password
-    if(empty(trim($_POST["confirm_password"]))){
-        $confirm_password_err = "Please confirm the password.";
-    } else{
-        $confirm_password = trim($_POST["confirm_password"]);
-        if(empty($new_password_err) && ($new_password != $confirm_password)){
-            $confirm_password_err = "Password did not match.";
-        }
-    }
-        
-    // Checking the input errors before updating into the database
-    if(empty($new_password_err) && empty($confirm_password_err)){
-        // Prepare an update statement
-        $sql = "UPDATE users SET password = ? WHERE user_id= ?";
-        
-        if($stmt = $mysqli->prepare($sql)){
-            // Binding variables to parameters
-            $stmt->bind_param("si", $param_password, $param_id);
-            
-            // Setting parameters
-            $param_password = password_hash($new_password, PASSWORD_DEFAULT);
-            $param_id = $_SESSION["id"];
-            
-            // Attemptings to execute the prepared statement
-            if($stmt->execute()){
-                // Password updated successfully. Destroy the session, and redirect to login page
-                session_destroy();
-                header("location: login.php");
-                exit();
-            } else{
-                echo "Oops! Something went wrong. Please try again later.";
-            }
+    $email = $_POST['email'];
+    $password = $_POST["new_password"];
+    $confirm_password = $_POST["confirm_password"];
 
-            // Closing the statement
-            $stmt->close();
-        }
+    if (strlen($password) < 6) {
+        $password_err = "Password must have at least 6 characters.";
     }
     
-    // Close connection
-    $mysqli->close();
+    if ($password !== $confirm_password) {
+        $confirm_password_err = "Passwords did not match.";
+        $new_password_err = "Passwords did not match.";
+    }
+    if (empty($new_password_err) && empty($confirm_password_err)) {
+        $en_password = password_hash($password, PASSWORD_BCRYPT);
+    $update= new_password_controller($en_password, $email);
+    if($update){
+        session_destroy();
+        header("Location: login.php");
+    }
 }
+}
+
+require('controllers/product_controller.php');
+$customer_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : "";
+// this is for cart counting
+ $cart_count = cart_count_controller($customer_id);
+
+if (empty($_SESSION['user_id'])) {
+    header('Location: login.php');
+    }
 ?>
 
 <!DOCTYPE html>
@@ -106,7 +86,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     <div class="container-fluid">
                         <div class="left-side">
                             <div id="logo">
-                            <a href="home.php"><img src="images/rest.png" data-sticky-logo="images/rest.png" alt=""></a>
+                            <a href="index.php"><img src="images/rest.png" data-sticky-logo="images/rest.png" alt=""></a>
                             </div>
                             <!-- Mobile Navigation -->
                             <div class="mmenu-trigger">
@@ -119,17 +99,21 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             <!-- Main Navigation -->
                             <nav id="navigation" class="style-1">
                                 <ul id="responsive">
-                                    <li><a href="home.php">Home</a></li>
+                                    <li><a href="index.php">Home</a></li>
                                     <li><a href="my_rooms.php">My Paid Rooms</a></li>
-                                    <li><a href="user_faq.php">FAQ</a></li> 
-                                    <li><a href="user_contact.php">Contact</a></li>
+                                    <li><a href="faq.php">FAQ</a></li> 
+                                    <li><a href="contact_us.php">Contact</a></li>
                                 </ul>
                             </nav>
                             <div class="clearfix"></div>
                         </div>
                         <div class="header-user-menu user-menu">
-                        <a href="making_payment.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;padding-left:25px;'></i>
-                    <span class='badge badge-warning' id='lblCartCount'> 1 </span></a>
+                        <a href="cart.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;padding-left:25px;'></i>
+                    <span class='badge badge-warning' id='lblCartCount'> <?php if(empty($cart_count['counting'])){
+                        echo '';
+                    } else{
+                        echo $cart_count['counting'];
+                    }?> </span></a>
                             <div class="header-user-name">
                                 <span><img src="images/icons/user.png" alt=""></span>Hi, <?php echo $_SESSION["username"];?>!
                             </div>
@@ -154,7 +138,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 <img src="images/icons/icons.png" alt="avatar" class="img-fluid profile-img">
                             </div>
                             <div class="active-user">
-                                <h2><?php echo $_SESSION["fullname"];?></h2>
+                                <h2><?php echo $_SESSION["full_name"];?></h2>
                             </div>
                             <div class="detail clearfix">
                                 <ul class="mb-0">
@@ -227,16 +211,17 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                             <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
                                 <div class="row">
                                     <div class="col-lg-12">
-                                        <div class="form-group email <?php echo (!empty($new_password_err)) ? 'has-error' : ''; ?>">
+                                        <input type='hidden' name='email' value='<?php echo $_SESSION['email']?>'>
+                                        <div class="form-group email">
                                             <label>New Password</label>
-                                            <input type="password" name="new_password" class="form-control" value="<?php echo $new_password; ?>">
+                                            <input type="password" name="new_password" class="form-control" required>
                                             <span class="help-block"  style="color:red;"><?php echo $new_password_err; ?></span>
                                         </div>
                                     </div>
                                     <div class="col-lg-12 ">
-                                        <div class="form-group subject <?php echo (!empty($confirm_password_err)) ? 'has-error' : ''; ?>">
+                                        <div class="form-group subject">
                                             <label>Confirm New Password</label>
-                                            <input type="password" name="confirm_password" class="form-control" value="<?php echo $confirm_password; ?>">
+                                            <input type="password" name="confirm_password" class="form-control" required>
                                             <span class="help-block"  style="color:red;"><?php echo $confirm_password_err; ?></span>
                                         </div>
                                     </div>

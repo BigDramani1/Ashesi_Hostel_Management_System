@@ -1,5 +1,13 @@
 <?php
 session_start();
+require('controllers/product_controller.php');
+$customer_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : "";
+// this is for cart counting
+$cart_count = cart_count_controller($customer_id);
+$count=count_number_of_purchases_controller($customer_id);
+if (empty($_SESSION['user_id'])) {
+header('Location: login.php');
+}
 ?>
 <!DOCTYPE html>
 <html lang="zxx">
@@ -42,7 +50,7 @@ session_start();
                     <div class="container-fluid">
                         <div class="left-side">
                             <div id="logo">
-                            <a href="home.php"><img src="images/rest.png" data-sticky-logo="images/rest.png" alt=""></a>
+                            <a href="index.php"><img src="images/rest.png" data-sticky-logo="images/rest.png" alt=""></a>
                             </div>
                             <!-- Mobile Navigation -->
                             <div class="mmenu-trigger">
@@ -55,18 +63,22 @@ session_start();
                             <!-- Main Navigation -->
                             <nav id="navigation" class="style-1">
                                 <ul id="responsive">
-                                    <li><a href="home.php">Home</a></li>
+                                    <li><a href="index.php">Home</a></li>
                                         <li><a href="my_rooms.php">My Paid Rooms</a></li>
-                                        <li><a href="user_faq.php">FAQ</a></li> 
-                                        <li><a href="user_contact.php">Contact</a></li>
+                                        <li><a href="faq.php">FAQ</a></li> 
+                                        <li><a href="contact_us.php">Contact</a></li>
     
                                 </ul>
                             </nav>
                             <div class="clearfix"></div>
                         </div>
                         <div class="header-user-menu user-menu">
-                        <a href="making_payment.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;padding-left:25px;'></i>
-                    <span class='badge badge-warning' id='lblCartCount'> 1 </span></a>
+                        <a href="cart.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;padding-left:25px;'></i>
+                    <span class='badge badge-warning' id='lblCartCount'> <?php if(empty($cart_count['counting'])){
+                        echo '';
+                    } else{
+                        echo $cart_count['counting'];
+                    }?> </span></a>
                             <div class="header-user-name">
                                 <span><img src="images/icons/user.png" alt=""></span>Hi, <?php echo $_SESSION["username"];?>!
                             </div>
@@ -80,7 +92,7 @@ session_start();
             </header>
         </div>
         <div class="clearfix"></div>
-        <!-- Header Container / End -->a
+        <!-- Header Container / End -->
 
         <!-- START SECTION DASHBOARD -->
         <section class="user-page section-padding">
@@ -93,7 +105,7 @@ session_start();
                                 <img src="images/icons/icons.png" alt="avatar" class="img-fluid profile-img">
                             </div>
                             <div class="active-user">
-                                <h2><?php echo $_SESSION["fullname"];?></h2>
+                                <h2><?php echo $_SESSION["full_name"];?></h2>
                             </div>
                             <div class="detail clearfix">
                                 <ul class="mb-0">
@@ -171,7 +183,7 @@ session_start();
                                                 <i class="fas fa-credit-card" style="color:white;"></i>
                                             </div>
                                             <div class="info">
-                                                <h6 class="number">10</h6>
+                                                <h6 class="number"><?php echo $count['count'] ?></h6>
                                                 <p class="type ml-1">Number of Paid Hostels</p>
                                             </div>
                                         </div>
@@ -179,11 +191,11 @@ session_start();
                                     <div class="col-lg-3 col-md-6 dar booked">
                                         <div class="item mb-0">
                                             <div class="icon">
-                                                <i class="fas fa-heart"></i>
+                                                <i class="fas fa-shopping-cart" style="color:white;"></i>
                                             </div>
                                             <div class="info">
-                                                <h6 class="number">4</h6>
-                                                <p class="type ml-1">Times Bookmarked</p>
+                                                <h6 class="number"><?php echo $cart_count['counting']?></h6>
+                                                <p class="type ml-1">Number of items in Card</p>
                                             </div>
                                         </div>
                                     </div>
@@ -204,7 +216,7 @@ session_start();
                                         <div class="col-sm-6">
                                             <div class="form-group">
                                                 <label>Full Name</label>
-                                                <input type="text" class="form-control" placeholder="<?php echo $_SESSION["fullname"];?>" readonly>
+                                                <input type="text" class="form-control" placeholder="<?php echo $_SESSION["full_name"];?>" readonly>
                                             </div>
                                         </div>
                                         <div class="col-sm-6">

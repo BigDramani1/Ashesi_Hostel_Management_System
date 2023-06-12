@@ -1,187 +1,73 @@
 <?php
 session_start();
-// Including a config file to it
-require_once "settings/connection.php";
- 
-// Variable are initialize with empty values
-$username = $fullname = $phone  = $email = $password = $confirm_password = "";
-$username_err = $fullname_err = $phone_err =  $email_err= $password_err = $confirm_password_err = "";
 
- 
-// Processing form data when form is submitted
-if($_SERVER["REQUEST_METHOD"] == "POST"){
- 
-    // Validating the username
-    if(empty(trim($_POST["username"]))){
-        $username_err = "Please enter a username.";
-    } else{
-        // Preparing a select statement
-        $sql = "SELECT user_id FROM users WHERE username = ?";
-        
-        if($stmt = $mysqli->prepare($sql)){
-            //Binding variables to parameters
-            $stmt->bind_param("s", $param_username);
-            
-            // Setting parameters
-            $param_username = trim($_POST["username"]);
-            
-            // Attempting to execute the prepared statement
-            if($stmt->execute()){
-                // store result
-                $stmt->store_result();
-                
-                if($stmt->num_rows == 1){
-                    $username_err = "This username is already used.";
-                } else{
-                    $username = trim($_POST["username"]);
-                }
-            } else{
-                echo "Oops! Something went wrong. Please try again later.";
-            }
-
-            // Closing the statement
-            $stmt->close();
-        }
-    }
-    
-    // Validating the password
-    if(empty(trim($_POST["password"]))){
-        $password_err = "Please enter your password.";     
-    } elseif(strlen(trim($_POST["password"])) < 6){
-        $password_err = "Password must have at least 6 characters.";
-    } else{
-        $password = trim($_POST["password"]);
-    }
-    
-    // Validating the confirm password
-    if(empty(trim($_POST["confirm_password"]))){
-        $confirm_password_err = "Please enter your password.";     
-    } else{
-        $confirm_password = trim($_POST["confirm_password"]);
-        if(empty($password_err) && ($password != $confirm_password)){
-            $confirm_password_err = "Password did not match.";
-        }
-    }
-     
-    //validating the full name
-    if(empty(trim($_POST["fullname"]))){
-        $fullname_err = "Please enter your full name.";
-    }else{
-        $fullname = trim($_POST["fullname"]);
-    }
-
- // Validating the phone number
- if(empty(trim($_POST["phone"]))){
-    $phone_err = "Please enter a valid phone number. The format is eg. +233 1234567890";
-}else if (!preg_match( "/^[\W][0-9]{3}?[\s]?[0-9]{2}?[\s]?[0-9]{3}[\s]?[0-9]{4}$/", $_POST["phone"])){
-    $phone_err= "Please enter a valid phone number. The format is eg. +233 1234567890";
-} else{
-    // Preparing a select statement
-    $sql = "SELECT user_id FROM users WHERE phone = ?";
-    
-    if($stmt = $mysqli->prepare($sql)){
-        //Binding variables to parameters
-        $stmt->bind_param("s", $param_phone);
-        
-        // Setting parameters
-        $param_phone = trim($_POST["phone"]);
-        
-        // Attempting to execute the prepared statement
-        if($stmt->execute()){
-            // store result
-            $stmt->store_result();
-            
-            if($stmt->num_rows == 1){
-                $phone_err = "This phone number is already used.";
-            } else{
-                $phone = trim($_POST["phone"]);
-            }
-        } else{
-            echo "Oops! Something went wrong. Please try again later.";
-        }
-
-        // Closing the statement
-        $stmt->close();
-    }
+// Check if the user is already logged in, then redirect the person  to home page
+if(isset($_SESSION["user_id"])){
+    header("location:index.php");
+    exit;
 }
+$phones='';
+// Including a config file
+require_once "settings/connection.php";
+require "controllers/customer_controller.php";
+ 
+// Variables are initialized with empty values
+$username = $full_name = $phone = $email = $password = $confirm_password = "";
+$username_err = $full_name_err = $phone_err =  $email_err = $password_err = $confirm_password_err = "";
 
-    // Validating the email
-    if(empty(trim($_POST["email"]))){
-        $email_err = "Please your email.";
-    }else if (!preg_match( "/^\b[A-Z0-9._%-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b$/i", $_POST["email"])){
-        $email_err= "please enter a valid email";
-}   else{
-        // Preparing a select statement
-        $sql = "SELECT user_id FROM users WHERE email = ?";
-        
-        if($stmt = $mysqli->prepare($sql)){
-            //Binding variables to parameters
-            $stmt->bind_param("s", $param_email);
-            
-            // Setting parameters
-            $param_email = trim($_POST["email"]);
-            
-            // Attempting to execute the prepared statement
-            if($stmt->execute()){
-                // store result
-                $stmt->store_result();
-                
-                if($stmt->num_rows == 1){
-                    $email_err = "This email is already used.";
-                } else{
-                    $email = trim($_POST["email"]);
-                }
-            } else{
-                echo "Oops! Something went wrong. Please try again later.";
+// Processing form data when form is submitted
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Validating the username
+    $username = $_POST['username'];
+    $password = $_POST["password"];
+    $confirm_password = $_POST["confirm_password"];
+    $full_name = $_POST["full_name"];
+    $phone = $_POST["phone"];
+    $phones= $phone['full'];
+    $email = $_POST["email"];
+
+    if (strlen($password) < 6) {
+        $password_err = "Password must have at least 6 characters.";
+    }
+
+    if ($password !== $confirm_password) {
+        $confirm_password_err = "Passwords did not match.";
+        $password_err = "Passwords did not match.";
+    }
+
+    if (empty($password_err) && empty($confirm_password_err)) {
+        // Hashing the password
+        $password = password_hash($password, PASSWORD_BCRYPT);
+
+        $customer = select_one_username_controller($username);
+        if ($customer !== NULL) {
+            $username_err = "The username you entered already exists!";
+        }
+
+        $customer_email = select_one_user_email_controller($email);
+        if ($customer_email !== NULL) {
+            $email_err = "The email entered already exists!";
+        }
+
+        $phone_check = select_one_phone_controller($phones);
+        if ($phone_check !== NULL) {
+            $phone_err = "The phone number you entered already exists!";
+        }
+
+        if (empty($username_err) && empty($phone_err)) {
+            $add = add_user_controller($username, $password, $full_name, $email, $phones);
+            if ($add) {
+                header("Location: login.php");
+                exit;
+            } else {
+                echo "Something went wrong. Please try again.";
             }
-
-            // Closing the statement
-            $stmt->close();
         }
     }
-    
-
-    //Checking the input errors before updating into the database
-    if(empty($username_err) && empty($fullname_err) && empty($phone_err) && empty($email_eer) && empty($password_err) && empty($confirm_password_err)){
-        
-        // Preparing an insert statement
-        $sql = "INSERT INTO users (username, fullname, phone, email, password) VALUES (?, ?, ?, ?, ?)";
-         
-        if($stmt = $mysqli->prepare($sql)){  
-            ///Storing the session information
-            $_SESSION["username"] = $username;     
-            $_SESSION["fullname"] =  $fullname;  
-            $_SESSION["email"] = $email; 
-            $_SESSION["phone"] = $phone;    
-                ///// Storing Data session variables
-             $param_fullname = $fullname;
-             $param_phone = $phone;
-             $param_username = $username;
-             $param_email= $email;
-             $param_password = password_hash($password, PASSWORD_DEFAULT); // Creates a password hash
-
-            // Binding variables to parameters
-            $stmt->bind_param("sssss", $param_username, $param_fullname,  $param_phone, $param_email, $param_password);
-
-
-            // Attempting to execute the prepared statement
-            if($stmt->execute()){
-                // Redirect to login page
-                header("location: login.php");
-            } else{
-                echo "Oops! Something went wrong. Please try again later.";
-            
-            }
-
-            // Closing the statement
-            $stmt->close();
-        }
-    }
-    
-    // Closing the connection
-    $mysqli->close();
 }
 ?>
+
+
 <!DOCTYPE html>
 <html lang="zxx">
 <head>
@@ -205,6 +91,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     <link rel="stylesheet" href="css/menu.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" id="color" href="css/default.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.3/css/intlTelInput.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.3/js/intlTelInput.min.js"></script>
 </head>
 
 <body class="inner-pages hd-white">
@@ -256,34 +144,34 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             <div class="login">
                 <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
                     <div class="divider"><span></span></div>
-                    <div class="form-group <?php echo (!empty($username_err)) ? 'has-error' : ''; ?>">
+                    <div class="form-group">
                         <label>Username</label>
-                        <input type="text" class="form-control" name="username" id="txtNoSpaces" value="<?php echo $username; ?>">
+                        <input type="text" class="form-control" name="username" id="txtNoSpaces" value="<?php echo $username; ?>" required max='8'>
                         <span class="help-block"  style="color:red;"><?php echo $username_err; ?></span>
                     </div>
-                    <div class="form-group <?php echo (!empty($fullname_err)) ? 'has-error' : ''; ?>">
+                    <div class="form-group">
                         <label>Full Name</label>
-                        <input type="text" class="form-control" name="fullname" value="<?php echo $fullname; ?>">
-                        <span class="help-block" style="color:red;"><?php echo $fullname_err; ?></span>
+                        <input type="text" class="form-control" name="full_name" value="<?php echo $full_name; ?>" required>
+                        <span class="help-block" style="color:red;"><?php echo $full_name_err; ?></span>
                     </div>
-                    <div class="form-group <?php echo (!empty($phone_err)) ? 'has-error' : ''; ?>">
+                    <div class="form-group">
                         <label>Phone</label>
-                        <input type="tel" class="form-control" name="phone" value="<?php echo $phone; ?>">
+                        <input type="tel" class="form-control" name="phone[main]" size='100'placeholder="eg. 548342821" id="phone_number"   oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"pattern="^\d{9}$" title="Please enter 9 digits." required value="<?php echo $phones;?>" >
                         <span class="help-block" style="color:red;"><?php echo $phone_err; ?></span>
                     </div>
-                    <div class="form-group <?php echo (!empty($email_err)) ? 'has-error' : ''; ?>">
+                    <div class="form-group">
                         <label>Email</label>
-                        <input type="email" class="form-control" name="email" value="<?php echo $email; ?>">
+                        <input type="email" class="form-control" name="email" value="<?php echo $email; ?>" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" title="email must be eg. havenempire@gmail.com" required>
                         <span class="help-block" style="color:red;"><?php echo $email_err; ?></span>
                     </div>
-                    <div class="form-group <?php echo (!empty($password_err)) ? 'has-error' : ''; ?>">
+                    <div class="form-group">
                         <label>Password</label>
-                        <input type="password" class="form-control" name="password" value="<?php echo $password; ?>">
+                        <input type="password" class="form-control" name="password" required>
                         <span class="help-block" style="color:red;"><?php echo $password_err; ?></span>
                     </div>
-                    <div class="form-group <?php echo (!empty($confirm_password_err)) ? 'has-error' : ''; ?>">
+                    <div class="form-group">
                         <label>Confirm Password</label>
-                        <input type="password" class="form-control" name="confirm_password" value="<?php echo $confirm_password; ?>">
+                        <input type="password" class="form-control" name="confirm_password" required>
                         <span class="help-block"  style="color:red;"><?php echo $confirm_password_err; ?></span>
                     </div>
                     <button type="submit" class="btn_1 rounded full-width">Sign up to Find Hostels</button>
@@ -325,6 +213,19 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             });
             });
         </script>
+        <script>
+var phone_number = window.intlTelInput(document.querySelector("#phone_number"), {
+  separateDialCode: true,
+  preferredCountries:["in"],
+  hiddenInput: "full",
+  utilsScript: "//cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.3/js/utils.js"
+});
+
+$("form").submit(function() {
+  var full_number = phone_number.getNumber(intlTelInputUtils.numberFormat.E164);
+$("input[name='phone[full]'").val(full_number)
+});
+</script>
 
     </div>
 </body>

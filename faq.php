@@ -1,3 +1,19 @@
+<?php
+session_start();
+require('controllers/product_controller.php');
+
+if (empty($_SESSION['user_id'])) {
+    $link = "login.php";
+    $cart = "index_cart.php";
+} else {
+    $link = "dashboard.php";
+    $cart = "cart.php";
+}
+$customer_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : "";
+// this is for cart counting
+$cart_count = cart_count_controller($customer_id);
+
+?>
 <!DOCTYPE html>
 <html lang="zxx">
 <head>
@@ -26,6 +42,7 @@
 </head>
 
 <body class="inner-pages ui-elements hd-white">
+<?php if (empty($customer_id)) { ?>
     <div id="wrapper">
         <header id="header-container">
             <div id="header">
@@ -46,7 +63,7 @@
                         <nav id="navigation" class="style-1">
                             <ul id="responsive">
                                 <li><a href="index.php">Home</a></li>
-                                    <li><a href="login.php">My Favorites</a></li>
+                                <li><a href="my_rooms.php">My Paid Rooms</a></li>
                                     <li><a href="faq.php">FAQ</a></li> 
                                     <li><a href="contact_us.php">Contact</a></li>
 
@@ -58,6 +75,53 @@
                     </div>
             </div>
         </header>
+    </div>
+    <?php } else{ ?>
+        <div id="wrapper">
+        <header id="header-container">
+            <div id="header">
+                <div class="container container-header">
+                    <div class="left-side">
+                        <div id="logo">
+                            <a href="index.php"><img src="images/rest.png" alt=""></a>
+                        </div>
+                        <!-- Mobile Navigation -->
+                        <div class="mmenu-trigger">
+                            <button class="hamburger hamburger--collapse" type="button">
+                                <span class="hamburger-box">
+							<span class="hamburger-inner"></span>
+                                </span>
+                            </button>
+                        </div>
+                        <!-- Main Navigation -->
+                        <nav id="navigation" class="style-1">
+                            <ul id="responsive">
+                                <li><a href="index.php">Home</a></li>
+                                <li><a href="my_rooms.php">My Paid Rooms</a></li>
+                                    <li><a href="faq.php">FAQ</a></li> 
+                                    <li><a href="contact_us.php">Contact</a></li>
+
+                            </ul>
+                    </div>
+                    <div class="header-user-menu user-menu add">
+                    <a href="cart.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;padding-left:25px;'></i>
+                    <span class='badge badge-warning' id='lblCartCount'> <?php if(empty($cart_count['counting'])){
+                        echo '';
+                    } else{
+                        echo $cart_count['counting'];
+                    }?> </span></a>
+                        <div class="header-user-name">
+                            <span><img src="images/icons/user.png" alt=""></span>Hi, <?php echo $_SESSION["username"];?>!
+                        </div>
+                        <ul>
+                            <li><a href="user_profile.php"> Edit profile</a></li>
+                            <li><a href="log_out.php">Log Out</a></li>
+                        </ul>
+                    </div>
+            </div>
+        </header>
+    </div>
+    <?php } ?>
         <div class="clearfix"></div>
         <!-- SECTION HEADINGS -->
         <section class="headings">

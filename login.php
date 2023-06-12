@@ -2,14 +2,14 @@
 // Initializing the session
 session_start();
  
-// Check if the user is already logged in, if yes then redirect the person  to home page
-if(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
-    header("location:home.php");
+// Check if the user is already logged in, then redirect the person  to home page
+if(isset($_SESSION["user_id"])){
+    header("location:index.php");
     exit;
 }
  
-// Including a config file to it
 require_once "settings/connection.php";
+require "controllers/customer_controller.php";
  
 // Stating the variables and initialize it with empty values
 $username = $password = "";
@@ -18,81 +18,39 @@ $username_err = $password_err = "";
 // Processing form data when form is submitted
 if($_SERVER["REQUEST_METHOD"] == "POST"){
  
-    // Cross checking to see if username is empty
-    if(empty(trim($_POST["username"]))){
-        $username_err = "Please enter username.";
-    } else{
-        $username = trim($_POST["username"]);
-    }
-    
-    // Cross checking to see if password is empty
-    if(empty(trim($_POST["password"]))){
-        $password_err = "Please enter your password.";
-    } else{
-        $password = trim($_POST["password"]);
-    }
-    
-    // Validating the  credentials
-    if(empty($username_err) && empty($password_err)){
-        // Prepare a select statement
-        $sql = "SELECT *  FROM users WHERE username = ?";
+ 
+        $username = $_POST["username"];
+        $password = $_POST["password"];
         
-        if($stmt = $mysqli->prepare($sql)){
-            // Binding variables to parameters
-            $stmt->bind_param("s", $param_username);
-            
-            // Setting parameters
-            $param_username = $username;
-            
-            // Attempting to execute the prepared statement
-            if($stmt->execute()){
-                // Store result
-                $stmt->store_result();
-                
-                // Check if username exists, if yes then verify password
-                if($stmt->num_rows == 1){                    
-                    // Bind result variables
-                    $stmt->bind_result($id, $username,$hashed_password, $fullname, $email, $phone);
-                    if($stmt->fetch()){
-                        if(password_verify($password, $hashed_password)){
-                            // Password is correct, so start a new session
-                            
-                            // Store data in session variables    
-                            $_SESSION["fullname"] =  $fullname;    
-                            $_SESSION["email"] = $email; 
-                            $_SESSION["phone"] = $phone; 
-                            $_SESSION["loggedin"] = true;
-                            $_SESSION["id"] = $id;
-                            $_SESSION["username"] = $username;  
-                         // Setting parameters                          
-                            
-                            // Redirect user to Home page
-                           
-                            header("location:home.php?login=success");
-                        } else{
-                            // Display an error message if password is not valid
-                            $password_err = "Either the password or username is incorrect";
-                            $username_err = "Either the username or password is incorrect";
-                            
-                        }
-                    }
-                } else{
-                    // Display an error message if username doesn't exist
-                    $password_err = "Either the password or username is incorrect";
-                    $username_err = "Either the username or password is incorrect";
-                }
-            } else{
-                echo "Oops! Something went wrong. Please try again later.";
-            }
-
-            // Close statement
-            $stmt->close();
-        }
+            //store all data
+    $customer_username = select_one_username_controller($username);
+    //check if the email exists in the database.
+    if ($customer_username == NULL) {
+          // Display an error message if password is not valid
+          $password_err = "Either the password or username is incorrect";
+          $username_err = "Either the username or password is incorrect";
     }
-    
-    // Closing the connection
-    $mysqli->close();
-}
+    // verify if the password is from the database.
+    else {
+        if (password_verify($password, $customer_username['password'])) {
+			$_SESSION['email'] = $customer_username['email'];
+			$_SESSION['full_name'] = $customer_username['full_name'];
+            $_SESSION['username'] = $customer_username['username'];
+			$_SESSION['user_id'] = $customer_username['user_id'];
+			$_SESSION['phone'] = $customer_username['phone'];
+			$_SESSION['password'] = $password;
+            header("Location: index.php");
+        }else {
+                    // Display an error message if password is not valid
+          $password_err = "Either the password or username is incorrect";
+          $username_err = "Either the username or password is incorrect";
+  
+        }
+              
+    } 
+                        } 
+                            
+               
 ?>
 <!DOCTYPE html>
 <html lang="zxx">
@@ -169,14 +127,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             <div class="login">
                 <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
                     <div class="divider"><span></span></div>
-                    <div class="form-group <?php echo (!empty($username_err)) ? 'has-error' : ''; ?>">
+                    <div class="form-group">
                         <label>Username</label>
-                        <input type="name" class="form-control" name="username" value="<?php echo $username; ?>">
+                        <input type="name" class="form-control" name="username" value="<?php echo $username; ?>" required>
                         <span class="help-block" style="color:red;"><?php echo $username_err; ?></span>
                     </div>
-                    <div class="form-group <?php echo (!empty($password_err)) ? 'has-error' : ''; ?>">
+                    <div class="form-group">
                         <label>Password</label>
-                        <input type="password" class="form-control" name="password">
+                        <input type="password" class="form-control" name="password" required>
                         <span class="help-block" style="color:red;"><?php echo $password_err; ?></span>
                     </div>
                     <button type="submit" class="btn_1 rounded full-width">Login to Find Hostels</button>

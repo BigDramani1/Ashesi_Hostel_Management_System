@@ -1,5 +1,18 @@
 <?php
 session_start();
+require('controllers/product_controller.php');
+if (empty($_SESSION['user_id'])) {
+    $link = "login.php";
+    $cart = "index_cart.php";
+} else {
+    $link = "dashboard.php";
+    $cart = "cart.php";
+}
+$customer_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : "";
+// this is for cart counting
+ $cart_count = cart_count_controller($customer_id);
+$hostel_count=count_all_hostels_controller();
+
 ?>
 <!DOCTYPE html>
 <html lang="zxx">
@@ -32,6 +45,7 @@ session_start();
 </head>
 
 <body class="inner-pages st-1 agents hp-6 full hd-white">
+<?php if (empty($customer_id)) { ?>
     <div id="wrapper">
         <header id="header-container">
             <div id="header">
@@ -52,15 +66,53 @@ session_start();
                         <nav id="navigation" class="style-1">
                             <ul id="responsive">
                                 <li><a href="index.php">Home</a></li>
-                                <li><a href="my_rooms.php">My Paid Rooms</a></li>
+                                    <li><a href="login.php">My Favorites</a></li>
                                     <li><a href="faq.php">FAQ</a></li> 
                                     <li><a href="contact_us.php">Contact</a></li>
 
                             </ul>
-                        </nav>
                     </div>
                     <div class="header-user-menu user-menu add">
-                    <a href="making_payment.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936; padding-left:25px; '></i></a>
+                    <a href="login.php" style="color:#FF385C; text-decoration:none;"><strong>Login &nbsp; &nbsp;</strong></a>
+                    <a href="index_cart.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;'></i></a>
+                    </div>
+            </div>
+        </header>
+    </div>
+    <?php } else{ ?>
+        <div id="wrapper">
+        <header id="header-container">
+            <div id="header">
+                <div class="container container-header">
+                    <div class="left-side">
+                        <div id="logo">
+                            <a href="index.php"><img src="images/rest.png" alt=""></a>
+                        </div>
+                        <!-- Mobile Navigation -->
+                        <div class="mmenu-trigger">
+                            <button class="hamburger hamburger--collapse" type="button">
+                                <span class="hamburger-box">
+							<span class="hamburger-inner"></span>
+                                </span>
+                            </button>
+                        </div>
+                        <!-- Main Navigation -->
+                        <nav id="navigation" class="style-1">
+                            <ul id="responsive">
+                                <li><a href="index.php">Home</a></li>
+                                    <li><a href="login.php">My Favorites</a></li>
+                                    <li><a href="faq.php">FAQ</a></li> 
+                                    <li><a href="contact_us.php">Contact</a></li>
+
+                            </ul>
+                    </div>
+                    <div class="header-user-menu user-menu add">
+                    <a href="cart.php"><i class='fa fa-shopping-cart fa-2x' style='color:#232936;padding-left:25px;'></i>
+                    <span class='badge badge-warning' id='lblCartCount'> <?php if(empty($cart_count['counting'])){
+                        echo '';
+                    } else{
+                        echo $cart_count['counting'];
+                    }?> </span></a>
                         <div class="header-user-name">
                             <span><img src="images/icons/user.png" alt=""></span>Hi, <?php echo $_SESSION["username"];?>!
                         </div>
@@ -71,6 +123,8 @@ session_start();
                     </div>
             </div>
         </header>
+    </div>
+    <?php } ?>
         <div class="clearfix"></div>
         <!-- START SECTION PROPERTIES LISTING -->
         <section class="properties-list featured portfolio blog">
@@ -94,27 +148,15 @@ session_start();
                             <div class="tab-pane fade show active" id="tabs_1">
                                 <div class="rld-main-search">
                                     <div class="row">
-                                        <div class="rld-single-input">
-                                            <input type="text" placeholder="Enter Keyword...">
+                                    <div class="col-12">
+                                    <form action="search.php" method="GET">
+                                        <div class="input-group mb-3">
+                                            <input type="text" name="search" value="<?php if (isset($_GET['search'])) {
+                                                                                        echo $_GET['search'];
+                                                                                    } ?>" style="border-radius:10px; height:auto;" class="form-control" placeholder="Search here.....">&nbsp;
+                                            <button type="submit" class="searching">Search</button>
                                         </div>
-                                        <div class="rld-single-select ml-22">
-                                            <select class="select single-select">
-                                                <option value="1">Hostel Type</option>
-                                                <option value="2">Family House</option>
-                                                <option value="3">Apartment</option>
-                                            </select>
-                                        </div>
-                                        <div class="rld-single-select">
-                                            <select class="select single-select mr-0">
-                                                <option value="1">Bathroom Type</option>
-                                                        <option value="2">Bath Tub</option>
-                                                        <option value="3">Freestanding Shower</option>
-                                                    </select>
-                                            </select>
-                                        </div>
-                                        <div class="rld-single-select ml-3">
-                                            <a class="btn btn-yellow" href="#">Search Now</a>
-                                        </div>
+                                    </form>
                                     </div>
                                 </div>
                             </div>
@@ -126,23 +168,73 @@ session_start();
                         <div class="detail-wrapper-body">
                             <div class="listing-title-bar">
                                 <div class="text-heading text-left">
-                                    <p class="font-weight-bold mb-0 mt-3">9 Search results</p>
+                                    <p class="font-weight-bold mb-0 mt-3"><?php echo $hostel_count?> Search results</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </section>
                 <div class="row featured portfolio-items">
-                <?php require_once ("components/user_components.php");?>
                         <?php
-                         require_once('settings/const.php');
-                         $mysqli = new mysqli(SERVER, USERNAME, PASSWORD, DATABASE);
-                         $sql = "SELECT * FROM hostels";
-                         $result = mysqli_query($mysqli, $sql);
-                        // Associative while loop array
-                        while ($row = mysqli_fetch_assoc($result)){
-                            all_hostels($row['hostel_id'], $row['hostel_name'], $row['hostel_owner'],$row['price_range'],$row['image']);
-                        }  
+                         $products = select_all_hostels_controller();
+                         foreach ($products as $hostel) {
+                         echo"
+                         <div class=\"item col-lg-4 col-md-6 col-xs-12 people rent\">
+                        <div class=\"project-single\" data-aos=\"fade-up\">
+                            <div class=\"project-inner project-head\">
+                                <div class=\"project-bottom\">
+                                <input type='hidden' name='room_id' value='{$hostel['hostel_id']}'>
+                                    <h4><a href=\"hostel_details.php?id={$hostel['hostel_id']}p\">View Property</a><span class=\"category\">Real Estate</span></h4>
+                                </div>
+                                <div class=\"homes\">
+                                    <a href=\"hostel_details.php?id={$hostel['hostel_id']}\" class=\"homes-img\">
+                                        <img src=\"{$hostel['image']}\" alt=\"home-1\" class=\"img-responsive\">
+                                    </a>
+                                </div>
+                                <div class=\"button-effect\">
+                                    <a href=\"hostel_details.php?id={$hostel['hostel_id']}\" class=\"img-poppu btn\"><i class=\"fa fa-photo\"></i></a>
+                                </div>
+                            </div>
+                            <div class=\"homes-content\">
+                                <h3><a href=\"hostel_details.php?id={$hostel['hostel_id']}\">{$hostel['hostel_name']}</a></h3>
+                                <p class=\"homes-address mb-3\">
+                                    <a href=\"hostel_details.php?id={$hostel['hostel_id']}\">
+                                        <i class=\"fa fa-map-marker\"></i><span>1 University Avenue, Berekuso</span>
+                                    </a>
+                                </p>
+                                <ul class=\"homes-list clearfix pb-3\">
+                                    <li class=\"the-icons\">
+                                        <i class=\"fa fa-bed mr-2\" aria-hidden=\"true\"></i>
+                                        <span>Bedrooms</span>
+                                    </li>
+                                    <li class=\"the-icons\">
+                                        <i class=\"fa fa-bath mr-2\" aria-hidden=\"true\"></i>
+                                        <span>Bathrooms</span>
+                                    </li>
+                                    <li class=\"the-icons\">
+                                        <i class=\"fa fa-lock mr-2\" aria-hidden=\"true\"></i>
+                                        <span>Security</span>
+                                    </li>
+                                    <li class=\"the-icons\">
+                                        <i class=\"fa fa-car mr-2\" aria-hidden=\"true\"></i>
+                                        <span>Car park</span>
+                                    </li>
+                                </ul>
+                                <!-- Price -->
+                                <div class=\"price-properties\">
+                                    <h3 class=\"title mt-3\">
+                                <a href=\"hostel_details.php?id={$hostel['hostel_id']}\">GH₵ {$hostel['price_range']}</a>
+                                </h3>
+                                </div>
+                                <div class=\"footer\">
+                                    <a href=\"hostel_details.php?id={$hostel['hostel_id']}p\">
+                                        <i class=\"fa fa-user\"></i> {$hostel['hostel_owner']}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>";
+                }
                         ?>  
                 </div>
             </div>
